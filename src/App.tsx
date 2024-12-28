@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useFBX } from "@react-three/drei";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import "./App.css";
 import * as THREE from "three";
+import { exportProject } from "./utils/exporter";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 declare global {
   interface Window {
@@ -51,81 +53,90 @@ function EyeClosedIcon() {
   );
 }
 
-function Scene() {
-  try {
-    const fbx = useFBX("example.fbx");
-    console.log("Loaded FBX:", fbx);
+function LightModeIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" />
+    </svg>
+  );
+}
 
-    window.fbxObjects = {};
-    window.originalMaterials = {};
+function DarkModeIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" />
+    </svg>
+  );
+}
 
-    fbx.traverse((object) => {
-      if (object.name) {
-        window.fbxObjects[object.name] = object;
-        // Check specifically for Mesh objects
-        if (object instanceof THREE.Mesh) {
-          window.originalMaterials[object.name] = object.material;
+function Scene({ fbxPath }: { fbxPath: string }) {
+  const fbx = useFBX(convertFileSrc(fbxPath));
+
+  useEffect(() => {
+    if (!fbxPath) return;
+
+    try {
+      console.log("Loaded FBX:", fbx);
+      window.fbxObjects = {};
+      window.originalMaterials = {};
+
+      fbx.traverse((object) => {
+        if (object.name) {
+          window.fbxObjects[object.name] = object;
+          // Check specifically for Mesh objects
+          if (object instanceof THREE.Mesh) {
+            window.originalMaterials[object.name] = object.material;
+          }
         }
-      }
-    });
+      });
 
-    console.log("Available FBX objects:", Object.keys(window.fbxObjects));
+      // Create a map of all objects in the FBX by name
+      const objectsByName: { [key: string]: THREE.Object3D } = {};
+      fbx.traverse((object) => {
+        if (object.name) {
+          objectsByName[object.name] = object;
+        }
+      });
 
-    // Create a map of all objects in the FBX by name
-    const objectsByName: { [key: string]: THREE.Object3D } = {};
-    fbx.traverse((object) => {
-      if (object.name) {
-        objectsByName[object.name] = object;
-      }
-    });
+      // Function to toggle visibility of an object by name
+      const toggleVisibility = (name: string, isVisible: boolean) => {
+        const object = objectsByName[name];
+        if (object) {
+          object.visible = isVisible;
+        }
+      };
 
-    // Function to toggle visibility of an object by name
-    const toggleVisibility = (name: string, isVisible: boolean) => {
-      const object = objectsByName[name];
-      if (object) {
-        object.visible = isVisible;
-      }
-    };
+      // Log available object names for debugging
+      // console.log("Available objects:", Object.keys(objectsByName));
+    } catch (error) {
+      console.error("Error loading FBX:", error);
+    }
+  }, [fbxPath]);
 
-    // Log available object names for debugging
-    console.log("Available objects:", Object.keys(objectsByName));
+  return (
+    <>
+      <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+      <ambientLight intensity={1.0} />
+      <directionalLight position={[5, 5, 5]} intensity={2} castShadow />
+      <directionalLight position={[-5, -5, -5]} intensity={1} />
 
-    return (
-      <>
-        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
-        <ambientLight intensity={1.0} />
-        <directionalLight position={[5, 5, 5]} intensity={2} castShadow />
-        <directionalLight position={[-5, -5, -5]} intensity={1} />
+      <gridHelper
+        args={[20, 40]}
+        position={[0, -0.01, 0]}
+        material-opacity={0.1}
+        material-transparent={true}
+      />
 
-        <gridHelper
-          args={[20, 40]}
-          position={[0, -0.01, 0]}
-          material-opacity={0.1}
-          material-transparent={true}
-        />
-
+      {fbx && (
         <primitive
           object={fbx}
           scale={1.0}
           position={[0, 0, 0]}
           rotation={[0, 0, 0]}
         />
-      </>
-    );
-  } catch (error) {
-    console.error("Error loading FBX:", error);
-    return (
-      <>
-        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-        <mesh>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color="red" />
-        </mesh>
-      </>
-    );
-  }
+      )}
+    </>
+  );
 }
 
 function LayerItem({
@@ -286,7 +297,20 @@ function LayerItem({
 }
 
 function App() {
+  const [isDarkMode, setIsDarkMode] = useState(
+    () => window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
   const [project, setProject] = useState<QuillProject | null>(null);
+  const [projectPath, setProjectPath] = useState<string | null>(null);
+  const [tempFBXPath, setTempFBXPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDarkMode]);
 
   const updateLayer = (layerId: string, updates: Partial<QuillLayer>) => {
     setProject((currentProject) => {
@@ -322,20 +346,24 @@ function App() {
 
   async function loadProject() {
     try {
-      const filePath = await open({
-        filters: [
-          {
-            name: "Quill Project",
-            extensions: ["json"],
-          },
-        ],
+      const folderPath = await open({
+        directory: true,
       });
+      const filePath = folderPath ? `${folderPath}/Quill.json` : null;
 
       if (filePath) {
         const contents = await readTextFile(filePath as string);
         const projectData = JSON.parse(contents);
-        console.log(projectData);
+        console.log("loaded projectData", projectData);
+        setTempFBXPath(null);
+        const tempFBXPath = await exportProject(
+          folderPath as string,
+          "FBX",
+          true
+        );
+        setProjectPath(folderPath);
         setProject(projectData);
+        setTempFBXPath(tempFBXPath);
       }
     } catch (error) {
       console.error("Error loading project:", error);
@@ -363,22 +391,50 @@ function App() {
     }
   }
 
+  async function handleExport(format: "FBX" | "Alembic") {
+    if (!projectPath) return;
+
+    try {
+      await exportProject(projectPath as string, format);
+    } catch (error) {
+      console.error(`Failed to export as ${format}:`, error);
+    }
+  }
+
   return (
     <main className="container">
+      <button
+        onClick={() => setIsDarkMode(!isDarkMode)}
+        className="absolute z-10 p-2 transition-colors rounded-full top-4 right-4 hover:bg-gray-200 dark:hover:bg-gray-700"
+        title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
+      </button>
+
       <div className="canvas-container">
-        <Canvas camera={{ position: [5, 5, 5], fov: 60 }} shadows>
-          <Scene />
-        </Canvas>
+        {tempFBXPath && (
+          <Canvas camera={{ position: [5, 5, 5], fov: 60 }} shadows>
+            <Scene fbxPath={tempFBXPath as string} />
+          </Canvas>
+        )}
       </div>
 
       <div className="ui-layer">
-        <div className="ui-layer-header flex flex-col items-start">
-          <h1 className="text-2xl font-bold mb-4">Quill Publisher</h1>
+        <div className="relative flex flex-col items-start ui-layer-header">
+          <h1 className="mb-2 text-2xl font-bold">Quill Publisher</h1>
+          {projectPath && (
+            <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+              Project: {projectPath}
+            </p>
+          )}
 
           <div className="flex gap-x-2.5">
             <button onClick={loadProject}>Load Project</button>
             <button onClick={saveProject} disabled={!project}>
               Save Project
+            </button>
+            <button onClick={() => handleExport("Alembic")} disabled={!project}>
+              Export Alembic
             </button>
           </div>
         </div>

@@ -1,0 +1,43 @@
+{
+  "Exporter": "FBX",
+  "InputFile": "Root",
+  "ExtraInputs": [],
+  "OutputFile": "C:\\char_zako_04\\a.fbx",
+  "ExportOptions": {
+    "AbortOnErrors": false,
+    "ExportHidden": false,
+    "ExcludeList": [],
+    "GroupExtraInputs": false,
+    "Optimize": {
+      "Optimize": false,
+      "OptimizeKeepOldLayers": false,
+      "OptimizeSimplifyThreshold": 0.02,
+      "OptimizeIncludeList": []
+    },
+    "Asset": {
+      "UseFullName": false,
+      "ExportMeshes": true,
+      "ExportCurves": false,
+      "BakeTransforms": true,
+      "ExportUVs": true,
+      "ExportAnimation": true,
+      "MaterialPerLayer": false,
+      "ColorSpace": "Linear",
+      "ExportExtraAttrs": false,
+      "SeparateAlphaChannel": false,
+      "FixFlip": false,
+      "Scale": 1
+    },
+    "IMM": {
+      "CanGrab": false,
+      "ExportToSpaces": false,
+      "ExportOpusAudio": true,
+      "OpusBitRate": 96000
+    },
+    "Import": {
+      "RemoveCorruptStrokes": true,
+      "TryFixCorruptStrokes": true,
+      "RemoveDuplicates": false
+    }
+  }
+}
