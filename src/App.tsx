@@ -82,10 +82,15 @@ function Scene({ fbxPath }: { fbxPath: string }) {
 
       fbx.traverse((object) => {
         if (object.name) {
-          window.fbxObjects[object.name] = object;
-          // Check specifically for Mesh objects
-          if (object instanceof THREE.Mesh) {
-            window.originalMaterials[object.name] = object.material;
+          if (typeof window.fbxObjects !== "undefined") {
+            window.fbxObjects[object.name] = object;
+            // Check specifically for Mesh objects
+            if (
+              object instanceof THREE.Mesh &&
+              typeof window.originalMaterials !== "undefined"
+            ) {
+              window.originalMaterials[object.name] = object.material;
+            }
           }
         }
       });
@@ -97,14 +102,6 @@ function Scene({ fbxPath }: { fbxPath: string }) {
           objectsByName[object.name] = object;
         }
       });
-
-      // Function to toggle visibility of an object by name
-      const toggleVisibility = (name: string, isVisible: boolean) => {
-        const object = objectsByName[name];
-        if (object) {
-          object.visible = isVisible;
-        }
-      };
 
       // Log available object names for debugging
       // console.log("Available objects:", Object.keys(objectsByName));
@@ -198,6 +195,9 @@ function LayerItem({
       object.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           // Store original material if not already stored
+          if (!window.originalMaterials) {
+            window.originalMaterials = {};
+          }
           if (!window.originalMaterials[child.name]) {
             window.originalMaterials[child.name] = child.material;
           }
@@ -220,7 +220,7 @@ function LayerItem({
       object.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           // Restore original material
-          const originalMaterial = window.originalMaterials[child.name];
+          const originalMaterial = window.originalMaterials?.[child.name];
           if (originalMaterial) {
             child.material = originalMaterial;
           }
